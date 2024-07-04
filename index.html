@@ -251,7 +251,7 @@
 
         env.allowLocalModels = false;
         env.remoteModels = {
-            'Xenova/whisper-small': 'https://huggingface.co/Xenova/whisper-small/resolve/main/'
+            'Xenova/whisper-tiny': 'https://huggingface.co/Xenova/whisper-tiny/resolve/main/'
         };
 
         let mediaRecorder;
@@ -274,7 +274,7 @@
         (async function loadModel() {
             try {
                 status.textContent = 'Loading model...';
-                transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-small');
+                transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny');
                 status.textContent = 'Model loaded. Ready to record.';
                 startRecord.disabled = false;
             } catch (error) {
