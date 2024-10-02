@@ -390,20 +390,21 @@
         
         try {
             status.textContent = 'Checking LLM availability...';
-            const canCreate = await window.ai.canCreateTextSession({
-                monitor(m) {
-                    m.addEventListener("downloadprogress", e => {
-                        const percentage = Math.round((e.loaded / e.total) * 100);
-                        status.textContent = `Downloading LLM... ${percentage}%`;
-                    });
-                }
-            });
             
-            if (canCreate !== "no") {
-                status.textContent = 'Creating LLM session...';
-                sendToLLM.disabled = true;
-                
-                const session = await window.ai.createTextSession({
+            if (!window.ai || !window.ai.assistant) {
+                throw new Error('window.ai.assistant API is not available.');
+            }
+
+            const { available, defaultTemperature, defaultTopK, maxTopK } = await window.ai.assistant.capabilities();
+            
+            if (available === "no") {
+                throw new Error('LLM is not available on this device.');
+            }
+
+            status.textContent = 'Creating LLM session...';
+            let session;
+            try {
+                session = await window.ai.assistant.create({
                     monitor(m) {
                         m.addEventListener("downloadprogress", e => {
                             const percentage = Math.round((e.loaded / e.total) * 100);
@@ -411,34 +412,45 @@
                         });
                     }
                 });
-                status.textContent = 'Sending to LLM...';
-                const prompt = `Please respond to the following transcribed text: "${transcriptionText}"`;
-                
-                llmResponse.value = ''; // Clear previous response
-                let result = '';
-                let previousLength = 0;
-                
+            } catch (error) {
+                console.error('Error creating assistant session:', error);
+                status.textContent = 'Error: Unable to create LLM session.';
+                sendToLLM.disabled = false;
+                return;
+            }
+
+            status.textContent = 'Sending to LLM...';
+            sendToLLM.disabled = true;
+            
+            const prompt = `Please respond to the following transcribed text: "${transcriptionText}"`;
+            
+            llmResponse.value = ''; // Clear previous response
+            let result = '';
+            
+            try {
                 const stream = session.promptStreaming(prompt);
                 for await (const chunk of stream) {
-                    const newContent = chunk.slice(previousLength);
-                    llmResponse.value += newContent;
-                    previousLength = chunk.length;
-                    result += newContent;
+                    llmResponse.value += chunk;
+                    result += chunk;
                 }
                 
                 status.textContent = 'LLM response complete.';
+            } catch (error) {
+                console.error('Error during LLM interaction:', error);
+                status.textContent = 'Error: Failed to get LLM response.';
+                llmResponse.value = 'An error occurred while processing your request.';
+            } finally {
                 sendToLLM.disabled = false;
-                
-                session.destroy();
-            } else {
-                status.textContent = 'Error: LLM is not available on this device.';
+                if (session && typeof session.destroy === 'function') {
+                    session.destroy();
+                }
             }
         } catch (error) {
             console.error('Error interacting with LLM:', error);
-            status.textContent = 'Error during LLM interaction.';
+            status.textContent = 'Error: LLM interaction is not available.';
             sendToLLM.disabled = false;
         }
-    });  
+    });
 
     </script>
 </body>
