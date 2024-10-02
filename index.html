@@ -434,14 +434,7 @@
                 for await (const chunk of stream) {
                     llmResponse.value = chunk.trim();
                     result = chunk.trim();
-                    // p.innerHTML = DOMPurify.sanitize(marked.parse(fullResponse));
-                    //rawResponse.innerText = fullResponse;
                   }
-                /* 
-                const stream = session.promptStreaming(prompt);
-                for await (const chunk of stream) {
-                    llmResponse.value += chunk;
-                    result += chunk; */
                 }
                 
                 status.textContent = 'LLM response complete.';
