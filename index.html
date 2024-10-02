@@ -245,7 +245,6 @@
         <p>GitHub Repo: <a href="https://github.com/johnyquest7/whisper_chrome_ai">https://github.com/johnyquest7/whisper_chrome_ai</a></p> 
     </footer>
 
-
     <script type="module">
         import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.1';
 
@@ -381,80 +380,77 @@
                     visualizerContext.fillRect(x, HEIGHT - barHeight / 2, barWidth, barHeight);
                     x += barWidth + 1;
                 }
-            };
+            }
 
             draw();
         }
-    sendToLLM.addEventListener('click', async () => {
-        const transcriptionText = transcription.textContent.replace('Transcription: ', '');
-        
-        try {
-            status.textContent = 'Checking LLM availability...';
-            
-            if (!window.ai || !window.ai.assistant) {
-                throw new Error('window.ai.assistant API is not available.');
-            }
 
-            const { available, defaultTemperature, defaultTopK, maxTopK } = await window.ai.assistant.capabilities();
-            
-            if (available === "no") {
-                throw new Error('LLM is not available on this device.');
-            }
-
-            status.textContent = 'Creating LLM session...';
-            let session;
-            try {
-                session = await window.ai.assistant.create({
-                    temperature: 0.1,
-                    topK: 3,
-                    monitor(m) {
-                        m.addEventListener("downloadprogress", e => {
-                            const percentage = Math.round((e.loaded / e.total) * 100);
-                            status.textContent = `Downloading LLM... ${percentage}%`;
-                        });
-                    }
-                });
-            } catch (error) {
-                console.error('Error creating assistant session:', error);
-                status.textContent = 'Error: Unable to create LLM session.';
-                sendToLLM.disabled = false;
-                return;
-            }
-
-            status.textContent = 'Sending to LLM...';
-            sendToLLM.disabled = true;
-            
-            const prompt = `Please respond to the following transcribed text: "${transcriptionText}"`;
-            
-            llmResponse.value = ''; // Clear previous response
-            let result = '';
+        sendToLLM.addEventListener('click', async () => {
+            const transcriptionText = transcription.textContent.replace('Transcription: ', '');
             
             try {
-                const stream = await session.promptStreaming(prompt);
-                for await (const chunk of stream) {
-                    llmResponse.value = chunk.trim();
-                    result = chunk.trim();
-                  }
-                }
+                status.textContent = 'Checking LLM availability...';
                 
-                status.textContent = 'LLM response complete.';
-            } catch (error) {
-                console.error('Error during LLM interaction:', error);
-                status.textContent = 'Error: Failed to get LLM response.';
-                llmResponse.value = 'An error occurred while processing your request.';
-            } finally {
-                sendToLLM.disabled = false;
-                if (session && typeof session.destroy === 'function') {
-                    session.destroy();
+                if (!window.ai || !window.ai.assistant) {
+                    throw new Error('window.ai.assistant API is not available.');
                 }
-            }
-        } catch (error) {
-            console.error('Error interacting with LLM:', error);
-            status.textContent = 'Error: LLM interaction is not available.';
-            sendToLLM.disabled = false;
-        }
-    });
 
+                const { available } = await window.ai.assistant.capabilities();
+                
+                if (available === "no") {
+                    throw new Error('LLM is not available on this device.');
+                }
+
+                status.textContent = 'Creating LLM session...';
+                let session;
+                try {
+                    session = await window.ai.assistant.create({
+                        temperature: 0.1,
+                        topK: 3,
+                        monitor(m) {
+                            m.addEventListener("downloadprogress", e => {
+                                const percentage = Math.round((e.loaded / e.total) * 100);
+                                status.textContent = `Downloading LLM... ${percentage}%`;
+                            });
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error creating assistant session:', error);
+                    status.textContent = 'Error: Unable to create LLM session.';
+                    sendToLLM.disabled = false;
+                    return;
+                }
+
+                status.textContent = 'Sending to LLM...';
+                sendToLLM.disabled = true;
+                
+                const prompt = `Please respond to the following transcribed text: "${transcriptionText}"`;
+                
+                llmResponse.value = ''; // Clear previous response
+                
+                try {
+                    const stream = await session.promptStreaming(prompt);
+                    for await (const chunk of stream) {
+                        llmResponse.value = chunk.trim();
+                    }
+                    
+                    status.textContent = 'LLM response complete.';
+                } catch (error) {
+                    console.error('Error during LLM interaction:', error);
+                    status.textContent = 'Error: Failed to get LLM response.';
+                    llmResponse.value = 'An error occurred while processing your request.';
+                } finally {
+                    sendToLLM.disabled = false;
+                    if (session && typeof session.destroy === 'function') {
+                        session.destroy();
+                    }
+                }
+            } catch (error) {
+                console.error('Error interacting with LLM:', error);
+                status.textContent = 'Error: LLM interaction is not available.';
+                sendToLLM.disabled = false;
+            }
+        });
     </script>
 </body>
 </html>
