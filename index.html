@@ -430,10 +430,13 @@
             let result = '';
             
             try {
+                const result = await session.prompt(prompt);
+                llmResponse.value = result;
+                /* 
                 const stream = session.promptStreaming(prompt);
                 for await (const chunk of stream) {
                     llmResponse.value += chunk;
-                    result += chunk;
+                    result += chunk; */
                 }
                 
                 status.textContent = 'LLM response complete.';
