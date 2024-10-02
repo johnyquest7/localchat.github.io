@@ -385,46 +385,61 @@
 
             draw();
         }
-
-        sendToLLM.addEventListener('click', async () => {
-            const transcriptionText = transcription.textContent.replace('Transcription: ', '');
-            
-            try {
-                const canCreate = await window.ai.canCreateTextSession();
-                
-                if (canCreate !== "no") {
-                    status.textContent = 'Sending to LLM...';
-                    sendToLLM.disabled = true;
-                    
-                    const session = await window.ai.createTextSession();
-                    
-                    const prompt = `Please respond to the following transcribed text: "${transcriptionText}"`;
-                    
-                    llmResponse.value = ''; // Clear previous response
-                    let result = '';
-                    let previousLength = 0;
-                    
-                    const stream = session.promptStreaming(prompt);
-                    for await (const chunk of stream) {
-                        const newContent = chunk.slice(previousLength);
-                        llmResponse.value += newContent;
-                        previousLength = chunk.length;
-                        result += newContent;
-                    }
-                    
-                    status.textContent = 'LLM response complete.';
-                    sendToLLM.disabled = false;
-                    
-                    session.destroy();
-                } else {
-                    status.textContent = 'Error: LLM is not available on this device.';
+    sendToLLM.addEventListener('click', async () => {
+        const transcriptionText = transcription.textContent.replace('Transcription: ', '');
+        
+        try {
+            status.textContent = 'Checking LLM availability...';
+            const canCreate = await window.ai.canCreateTextSession({
+                monitor(m) {
+                    m.addEventListener("downloadprogress", e => {
+                        const percentage = Math.round((e.loaded / e.total) * 100);
+                        status.textContent = `Downloading LLM... ${percentage}%`;
+                    });
                 }
-            } catch (error) {
-                console.error('Error interacting with LLM:', error);
-                status.textContent = 'Error during LLM interaction.';
+            });
+            
+            if (canCreate !== "no") {
+                status.textContent = 'Creating LLM session...';
+                sendToLLM.disabled = true;
+                
+                const session = await window.ai.createTextSession({
+                    monitor(m) {
+                        m.addEventListener("downloadprogress", e => {
+                            const percentage = Math.round((e.loaded / e.total) * 100);
+                            status.textContent = `Downloading LLM... ${percentage}%`;
+                        });
+                    }
+                });
+                status.textContent = 'Sending to LLM...';
+                const prompt = `Please respond to the following transcribed text: "${transcriptionText}"`;
+                
+                llmResponse.value = ''; // Clear previous response
+                let result = '';
+                let previousLength = 0;
+                
+                const stream = session.promptStreaming(prompt);
+                for await (const chunk of stream) {
+                    const newContent = chunk.slice(previousLength);
+                    llmResponse.value += newContent;
+                    previousLength = chunk.length;
+                    result += newContent;
+                }
+                
+                status.textContent = 'LLM response complete.';
                 sendToLLM.disabled = false;
+                
+                session.destroy();
+            } else {
+                status.textContent = 'Error: LLM is not available on this device.';
             }
-        });
+        } catch (error) {
+            console.error('Error interacting with LLM:', error);
+            status.textContent = 'Error during LLM interaction.';
+            sendToLLM.disabled = false;
+        }
+    });  
+
     </script>
 </body>
 </html>
