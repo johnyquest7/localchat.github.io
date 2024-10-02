@@ -405,6 +405,8 @@
             let session;
             try {
                 session = await window.ai.assistant.create({
+                    temperature: 0.1,
+                    topK: 3,
                     monitor(m) {
                         m.addEventListener("downloadprogress", e => {
                             const percentage = Math.round((e.loaded / e.total) * 100);
